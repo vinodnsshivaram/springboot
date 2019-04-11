@@ -1,10 +1,12 @@
 package com.vinodshivaram.practice.springboot.service;
 
+import com.vinodshivaram.practice.springboot.exceptions.ItemExistsException;
 import com.vinodshivaram.practice.springboot.model.Registration;
 import com.vinodshivaram.practice.springboot.repository.RegistrationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +25,12 @@ public class RegistrationService implements RegistrationRepository {
     public Registration register(Registration registration) {
         registration.buildDateTimeAndId();
         registration.generateUserId();
-        return mongoTemplate.save(registration);
+        try {
+            registration = mongoTemplate.save(registration);
+        } catch (DuplicateKeyException e) {
+            throw new ItemExistsException("Either email address or username is already in use", e);
+        }
+        return registration;
     }
 
     @Override

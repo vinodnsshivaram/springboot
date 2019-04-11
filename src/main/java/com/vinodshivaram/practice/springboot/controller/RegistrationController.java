@@ -5,19 +5,17 @@ import com.vinodshivaram.practice.springboot.service.RegistrationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-public class AuthenticationController {
+@RequestMapping(value = "/users", produces = "application/json", consumes = "application/json")
+public class RegistrationController {
     @Autowired
     private RegistrationService registrationService;
 
-    @RequestMapping(value = "/register", method = RequestMethod.POST)
-    public ResponseEntity login(@RequestBody Registration payload){
+    @PostMapping("/register")
+    public ResponseEntity register(@RequestBody Registration payload){
         Registration saved = registrationService.register(payload);
-        return new ResponseEntity(saved, HttpStatus.OK);
+        return new ResponseEntity(saved, HttpStatus.CREATED);
     }
 }
