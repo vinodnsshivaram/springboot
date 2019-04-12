@@ -2,15 +2,15 @@ package com.vinodshivaram.practice.springboot.filters;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 import org.springframework.web.util.ContentCachingResponseWrapper;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
+import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -28,7 +28,8 @@ import java.util.stream.Stream;
  * @see ContentCachingResponseWrapper
  */
 @Component
-public class RequestAndResponseLoggingFilter extends OncePerRequestFilter {
+@Order(Ordered.HIGHEST_PRECEDENCE)
+public class RequestAndResponseLoggingFilter implements Filter {
     protected static Logger logger = LoggerFactory.getLogger(RequestAndResponseLoggingFilter.class);
     private static final List<MediaType> VISIBLE_TYPES = Arrays.asList(
             MediaType.valueOf("text/*"),
@@ -41,83 +42,82 @@ public class RequestAndResponseLoggingFilter extends OncePerRequestFilter {
     );
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if (isAsyncDispatch(request)) {
-            filterChain.doFilter(request, response);
-        } else {
-            doFilterWrapped(wrapRequest(request), wrapResponse(response), filterChain);
-        }
+    public void init(FilterConfig filterConfig) throws ServletException {
+        logger.info("Initializing Request and Response Logging Filter");
+    }
+
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        HttpServletRequest request = (HttpServletRequest) servletRequest;
+        HttpServletResponse response = (HttpServletResponse) servletResponse;
+
+        doFilterWrapped(wrapRequest(request), wrapResponse(response), filterChain);
+    }
+
+    @Override
+    public void destroy() {
+
     }
 
     protected void doFilterWrapped(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response, FilterChain filterChain) throws ServletException, IOException {
         try {
-            beforeRequest(request, response);
             filterChain.doFilter(request, response);
         } finally {
-            afterRequest(request, response);
+            logRequestResponse(request, response);
             response.copyBodyToResponse();
         }
     }
 
-    protected void beforeRequest(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response) {
+    protected void logRequestResponse(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response) {
         if (logger.isInfoEnabled()) {
-            logRequestHeader(request, request.getRemoteAddr() + "|>");
+            logRequest(request);
+            logResponse(response);
         }
     }
 
-    protected void afterRequest(ContentCachingRequestWrapper request, ContentCachingResponseWrapper response) {
-        if (logger.isInfoEnabled()) {
-            logRequestBody(request, request.getRemoteAddr() + "|>");
-            logResponse(response, request.getRemoteAddr() + "|<");
-        }
-    }
-
-    private static void logRequestHeader(ContentCachingRequestWrapper request, String prefix) {
+    private static void logRequest(ContentCachingRequestWrapper request) {
         String queryString = request.getQueryString();
         if (queryString == null) {
-            logger.info("{} {} {}", prefix, request.getMethod(), request.getRequestURI());
+            logger.info("{} {}", request.getMethod(), request.getRequestURI());
         } else {
-            logger.info("{} {} {}?{}", prefix, request.getMethod(), request.getRequestURI(), queryString);
+            logger.info("{} {}?{}", request.getMethod(), request.getRequestURI(), queryString);
         }
         Collections.list(request.getHeaderNames()).forEach(headerName ->
                 Collections.list(request.getHeaders(headerName)).forEach(headerValue ->
-                        logger.info("{} {}: {}", prefix, headerName, headerValue)));
-        logger.info("{}", prefix);
-    }
+                        logger.info("{}: {}", headerName, headerValue)));
 
-    private static void logRequestBody(ContentCachingRequestWrapper request, String prefix) {
         byte[] content = request.getContentAsByteArray();
         if (content.length > 0) {
-            logContent(content, request.getContentType(), request.getCharacterEncoding(), prefix);
+            logContent(content, request.getContentType(), request.getCharacterEncoding());
         }
     }
 
-    private static void logResponse(ContentCachingResponseWrapper response, String prefix) {
+    private static void logResponse(ContentCachingResponseWrapper response) {
         int status = response.getStatus();
-        logger.info("{} {} {}", prefix, status, HttpStatus.valueOf(status).getReasonPhrase());
+        logger.info("{} {}", status, HttpStatus.valueOf(status).getReasonPhrase());
         response.getHeaderNames().forEach(headerName ->
                 response.getHeaders(headerName).forEach(headerValue ->
-                        logger.info("{} {}: {}", prefix, headerName, headerValue)));
-        logger.info("{}", prefix);
+                        logger.info("{}: {}", headerName, headerValue)));
+
         byte[] content = response.getContentAsByteArray();
         if (content.length > 0) {
-            logContent(content, response.getContentType(), response.getCharacterEncoding(), prefix);
+            logContent(content, response.getContentType(), response.getCharacterEncoding());
         }
     }
 
-    private static void logContent(byte[] content, String contentType, String contentEncoding, String prefix) {
+    private static void logContent(byte[] content, String contentType, String contentEncoding) {
         MediaType mediaType = MediaType.valueOf(contentType);
         boolean visible = VISIBLE_TYPES.stream().anyMatch(visibleType -> visibleType.includes(mediaType));
         if (visible) {
             try {
                 String contentString = new String(content, contentEncoding);
                 contentString = contentString.replace("\n", "").replace("\t", "");
-                Stream.of(contentString.split("\r\n|\r|\n")).forEach(line -> logger.info("{} {}", prefix, line));
+                Stream.of(contentString.split("\r\n|\r|\n")).forEach(line -> logger.info("{}", line));
             } catch (UnsupportedEncodingException e) {
-                logger.info("{} [{} bytes content]", prefix, content.length);
+                logger.info("[{} bytes content]", content.length);
             }
         } else {
-            logger.info("{} [{} bytes content]", prefix, content.length);
+            logger.info("[{} bytes content]", content.length);
         }
     }
 

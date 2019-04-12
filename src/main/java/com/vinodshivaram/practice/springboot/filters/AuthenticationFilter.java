@@ -5,6 +5,7 @@ import com.vinodshivaram.practice.springboot.exceptions.ErrorResponse;
 import com.vinodshivaram.practice.springboot.exceptions.UnAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -15,6 +16,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 @Component
+@Order(1)
 public class AuthenticationFilter implements Filter {
     protected Logger logger = LoggerFactory.getLogger(AuthenticationFilter.class);
     protected ObjectMapper mapper = new ObjectMapper();
@@ -28,9 +30,6 @@ public class AuthenticationFilter implements Filter {
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         HttpServletRequest request = (HttpServletRequest) servletRequest;
         HttpServletResponse response = (HttpServletResponse) servletResponse;
-
-        logger.info("Request Method : Path  {} : {}", request.getMethod(), request.getRequestURI());
-
         Optional<String> token = Optional.ofNullable(request.getHeader("Authorization"));
 
         try {
@@ -43,10 +42,7 @@ public class AuthenticationFilter implements Filter {
             return;
         }
 
-        //call next filter in the filter chain
         filterChain.doFilter(request, response);
-
-        logger.info("Logging Response :{}", response.getContentType());
     }
 
     private void processAuthorizationToken(HttpServletRequest request, HttpServletResponse response, Optional<String> token) {
