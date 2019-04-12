@@ -15,6 +15,12 @@ import javax.servlet.http.HttpServletRequest;
 public class ApplicationExceptionHandler {
     protected Logger logger = LoggerFactory.getLogger(ApplicationExceptionHandler.class);
 
+    @ExceptionHandler({UnAuthorizedException.class})
+    public ResponseEntity<ErrorResponse> handleUnAuthorizedException(UnAuthorizedException e, HttpServletRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse(HttpStatus.UNAUTHORIZED, request.getRequestURI(), request.getMethod(), e.getMessage());
+        return new ResponseEntity<>(errorResponse, HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler({ItemNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleItemNotFoundException(ItemNotFoundException e, HttpServletRequest request) {
         ErrorResponse errorResponse = new ErrorResponse(HttpStatus.NOT_FOUND, request.getRequestURI(), request.getMethod(), e.getMessage());
