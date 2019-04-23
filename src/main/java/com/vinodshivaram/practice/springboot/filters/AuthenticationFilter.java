@@ -5,21 +5,25 @@ import com.vinodshivaram.practice.springboot.exceptions.ErrorResponse;
 import com.vinodshivaram.practice.springboot.exceptions.UnAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
+import org.springframework.security.authentication.AuthenticationManager;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
-@Component
-@Order(1)
 public class AuthenticationFilter implements Filter {
     protected Logger logger = LoggerFactory.getLogger(AuthenticationFilter.class);
     protected ObjectMapper mapper = new ObjectMapper();
+    protected List<String> unAuthenticatedRoutes = Arrays.asList("/users/register", "users/login");
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
@@ -54,7 +58,8 @@ public class AuthenticationFilter implements Filter {
     }
 
     private void validateAuthorizationToken(Optional<String> token) {
-
+        if (!token.toString().equalsIgnoreCase("abcdef"))
+            throw new UnAuthorizedException("Invalid Authorization token was present");
     }
 
     @Override
